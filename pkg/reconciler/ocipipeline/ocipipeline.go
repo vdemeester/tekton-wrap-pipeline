@@ -10,9 +10,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
-	corev1 "k8s.io/api/core/v1"
-
-	// "github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
@@ -21,15 +18,11 @@ import (
 	listersalpha "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1alpha1"
 	listers "github.com/tektoncd/pipeline/pkg/client/listers/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/reconciler/events"
-	"k8s.io/apimachinery/pkg/api/errors"
-
-	// "github.com/tektoncd/pipeline/pkg/reconciler/taskrun/resources"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	// "k8s.io/apimachinery/pkg/labels"
-	// "github.com/tektoncd/pipeline/pkg/names"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
@@ -40,7 +33,7 @@ import (
 )
 
 const (
-	DefaultBaseImage = "docker.io/vdemeester/oci-workspace-base:latest"
+	DefaultBaseImage = "ghcr.io/vdemeester/tekton-oci-pipeline/base:latest"
 
 	BaseParamName   = "ocipipeline.base"
 	TargetParamName = "ocipipeline.target"
