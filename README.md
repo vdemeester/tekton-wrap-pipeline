@@ -1,7 +1,131 @@
+
 # tekton-oci-pipeline
 
 Wrap a Pipeline to use OCI as workspace
 
+
+
+# Tekton `OCIPipeline` Custom Task
+
+Tekton [custom
+task](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)
+that allows to run a `Pipeline` with `emptydir` workspaces that will
+be using oci images to transfer data from a one `Task` to the other.
+
+This is a experimentation around not using PVC for sharing data with
+workspace in a Pipeline.
+
+## Install
+
+To install the `TaskGroup` custom task, you will need
+[`ko`](https://github.com/google/ko) until a release is being
+published.
+
+```bash
+# In a checkout of this repository
+$ export KO_DOCKER_REPO={prefix-for-image-reference} # e.g.: quay.io/vdemeest
+$ ko apply -f config
+2022/03/28 14:53:16 Using base gcr.io/distroless/static:nonroot@sha256:2556293984c5738fc75208cce52cf0a4762c709cf38e4bf8def65a61992da0ad for github.com/vdemeester/tekton-oci-pipeline/cmd/controller
+# […]
+deployment.apps/tekton-oci-pipeline-controller configured
+```
+
+This will build and install the `OCI` controller on your
+cluster, in the `tekton-pipelines` namespaces.
+
+## Usage
+
+### Using `Run`
+
+To run a `simple-pipeline` `Pipeline` defined below, we can just define a `Run`
+and refer to the `Pipeline` with `OCIPipeline` as a type. The type
+`OCIPipeline` doesn't really exists but the `Run` gets picked up by
+the controller as its own.
+
+```yaml
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: simple-pipeline
+spec:
+  params:
+  - name: git-url
+    type: string
+    default: https://github.com/vdemeester/buildkit-tekton
+  workspaces:
+  - name: sources
+  tasks:
+  - name: grab-source
+    params:
+    - name: url
+      value: $(params.git-url)
+    workspaces:
+    - name: output
+      workspace: sources
+    taskSpec:
+      params:
+      - name: url
+        type: string
+      workspaces:
+      - name: output
+      steps:
+      - name: clone
+        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0
+        script: |
+          /ko-app/git-init -url=$(params.url) -revision=main -path=$(workspaces.output.path)
+  - name: build
+    runAfter: [grab-source]
+    workspaces:
+    - name: sources
+      workspace: sources
+    taskSpec:
+      workspaces:
+      - name: sources
+      steps:
+      - name: build
+        image: docker.io/library/golang:latest
+        workingdir: $(workspaces.sources.path)
+        script: |
+          pwd && ls -la && go build -v ./...
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Run
+metadata:
+  name: run-simple-pipeline
+spec:
+  serviceAccountName: ocipipeline-sa
+  ref:
+    apiVersion: tekton.dev/v1alpha1
+    kind: OCIPipeline
+    name: simple-pipeline
+  params:
+  #- name: ocipipeline.base
+  #  value: docker.io/vdemeester/oci-workspace-base:latest
+  - name: ocipipeline.target
+    value: docker.io/vdemeester/pipelinerun-$(context.run.name)-{{workspace}}:latest
+  - name: git-url
+    value: https://github.com/vdemeester/go-helloworld-app
+  workspaces:
+  - name: sources
+    emptyDir: {}
+```
+
+The controller picks up all workspace with `emptydir` specified in the
+`Run` and back them up with an oci image instead.
+
+The controller picks up the following parameters as it's own
+configuration:
+- `ocipipeline.target`: this is the oci image reference to push
+  to. It's possible (and recommended) to use `{{workspace}}` to have
+  different image for different workspaces. It's also possible to use
+  `$(context.run.name)` to include the name of the run into the
+  reference.
+- `ocipipeline.base`: this is the *initial* base image to use for
+  workspaces. The default is
+  `ghcr.io/vdemeester/tekton-oci-pipeline/base:latest` which comes from
+  [`./images/base`](./images/base).
+
+## Limitations
 
 - How to handle parallel task ?
 - What differs from today ?
