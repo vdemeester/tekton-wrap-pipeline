@@ -25,3 +25,4 @@ jobs:
     - uses: actions/checkout@v2
     - uses: imjasonh/setup-ko@v0.4
     - run: ko publish --base-import-paths ./cmd/...
+    - run: docker build -t ghcr.io/vdemeester/tekton-oci-pipeline/base:latest -f images/base/Dockerfile images/base
