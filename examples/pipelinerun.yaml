@@ -57,6 +57,9 @@ spec:
   #- name: ocipipeline.base
   #  value: docker.io/vdemeester/oci-workspace-base:latest
   - name: ocipipeline.target
-    value: docker.io/vdemeester/pipelinerun-$(context.run.name):latest
+    value: docker.io/vdemeester/pipelinerun-$(context.run.name)-{{workspace}}:latest
   - name: git-url
     value: https://github.com/vdemeester/go-helloworld-app
+  workspaces:
+  - name: sources
+    emptyDir: {}

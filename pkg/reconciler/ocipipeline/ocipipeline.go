@@ -152,7 +152,7 @@ func (c *Reconciler) reconcile(ctx context.Context, run *v1alpha1.Run) error {
 		return updateRunStatus(ctx, run, pr)
 	}
 
-	// FIXME validate thingy
+	// FIXME validate things
 	baseimage := DefaultBaseImage
 	targetimage := ""
 	pipelinerunParams := []v1beta1.Param{}
@@ -168,7 +168,6 @@ func (c *Reconciler) reconcile(ctx context.Context, run *v1alpha1.Run) error {
 			pipelinerunParams = append(pipelinerunParams, p)
 		}
 	}
-	logger.Infof("pipelinerunParams: %+v", pipelinerunParams)
 	if targetimage == "" {
 		run.Status.MarkRunFailed(ReasonRunFailedValidation,
 			"No targetImage specified")
@@ -177,6 +176,13 @@ func (c *Reconciler) reconcile(ctx context.Context, run *v1alpha1.Run) error {
 	}
 
 	// Let's..
+	// - Grab all "workspaces" to "hijack"
+	ociworkspaces := map[string]v1beta1.WorkspaceBinding{}
+	for _, w := range run.Spec.Workspaces {
+		if w.EmptyDir != nil {
+			ociworkspaces[w.Name] = w
+		}
+	}
 	// - resolve the pipeline
 	spec, err := getPipelineSpec(ctx, c.pipelineClientSet.TektonV1beta1(), run.Namespace, run.Spec.Ref.Name)
 	if err != nil {
@@ -204,12 +210,7 @@ func (c *Reconciler) reconcile(ctx context.Context, run *v1alpha1.Run) error {
 			ServiceAccountName: run.Spec.ServiceAccountName,
 			Params:             pipelinerunParams,
 			PodTemplate:        run.Spec.PodTemplate,
-			// FIXME We bypass this for now, long term, we "filter"
-			// Workspaces: run.Spec.Workspaces,
-			Workspaces: []v1beta1.WorkspaceBinding{{
-				Name:     spec.Workspaces[0].Name,
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			}},
+			Workspaces:         run.Spec.Workspaces,
 			PipelineSpec: &v1beta1.PipelineSpec{
 				Tasks:  []v1beta1.PipelineTask{},
 				Params: spec.Params,
@@ -229,31 +230,43 @@ func (c *Reconciler) reconcile(ctx context.Context, run *v1alpha1.Run) error {
 	for i, taskspec := range sequence {
 		s := taskSpecs[taskspec.Name]
 		// FIXME support filtering workspaces
-		w := s.Workspaces[0]
-		// "enhance" the spec
-		if i != 0 {
-			baseimage = targetimage
-			// Add an extra step
-			s.Steps = append([]v1beta1.Step{{
-				Container: corev1.Container{
-					Name:       "import-workspace",
-					Image:      "gcr.io/go-containerregistry/crane:debug",
-					WorkingDir: "/",
-				},
-				Script: fmt.Sprintf(`#!/busybox/sh
+		for _, pw := range taskspec.Workspaces {
+			if _, ok := ociworkspaces[pw.Workspace]; !ok {
+				// Skip "unknown" workspaces
+				continue
+			}
+			wtargetimage := strings.ReplaceAll(targetimage, "{{workspace}}", pw.Workspace)
+			var w v1beta1.WorkspaceDeclaration
+			for _, d := range s.Workspaces {
+				if d.Name == pw.Name {
+					w = d
+				}
+			}
+			// "enhance" the spec
+			if i != 0 {
+				baseimage = wtargetimage
+				// Add an extra step
+				s.Steps = append([]v1beta1.Step{{
+					Container: corev1.Container{
+						Name:       "import-workspace",
+						Image:      "gcr.io/go-containerregistry/crane:debug",
+						WorkingDir: "/",
+					},
+					Script: fmt.Sprintf(`#!/busybox/sh
 echo "Extract workspace content from %s in %s"
 crane export %s | tar -x -C %s`, baseimage, w.GetMountPath(), baseimage, w.GetMountPath()),
-			}}, s.Steps...)
-		}
-		s.Steps = append(s.Steps, v1beta1.Step{
-			Container: corev1.Container{
-				Name:  "export-workspace",
-				Image: "gcr.io/go-containerregistry/crane:debug",
-			},
-			Script: fmt.Sprintf(`#!/busybox/sh
+				}}, s.Steps...)
+			}
+			s.Steps = append(s.Steps, v1beta1.Step{
+				Container: corev1.Container{
+					Name:  "export-workspace",
+					Image: "gcr.io/go-containerregistry/crane:debug",
+				},
+				Script: fmt.Sprintf(`#!/busybox/sh
 echo "Export workspace content from %s to %s"
-cd %s && tar -f - -c . | crane append -b %s -t %s -f -`, w.GetMountPath(), targetimage, w.GetMountPath(), baseimage, targetimage),
-		})
+cd %s && tar -f - -c . | crane append -b %s -t %s -f -`, w.GetMountPath(), wtargetimage, w.GetMountPath(), baseimage, wtargetimage),
+			})
+		}
 		taskspec.TaskSpec.TaskSpec = *s
 		pipelinerun.Spec.PipelineSpec.Tasks = append(pipelinerun.Spec.PipelineSpec.Tasks, taskspec)
 	}
