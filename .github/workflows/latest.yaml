@@ -17,9 +17,18 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.17
-    - name: Build
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-golang-
+    - run: go env
+    - name: go build
       run: go build -v ./...
-    - name: Test
+    - name: go test
       run: go test -v ./...
 
   publish:
@@ -38,6 +47,15 @@ jobs:
       with:
         go-version: 1.17
     - uses: actions/checkout@v2
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-golang-
 
     - id: meta
       uses: docker/metadata-action@v3
