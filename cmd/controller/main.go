@@ -13,7 +13,7 @@ import (
 
 const (
 	// ControllerLogKey is the name of the logger for the controller cmd
-	ControllerLogKey = "tekton-pipelines-controller"
+	ControllerLogKey = "tekton-oci-pipelines-controller"
 )
 
 func main() {
