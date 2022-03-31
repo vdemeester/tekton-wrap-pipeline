@@ -1,10 +1,3 @@
-
-# tekton-oci-pipeline
-
-Wrap a Pipeline to use OCI as workspace
-
-
-
 # Tekton `OCIPipeline` Custom Task
 
 Tekton [custom
