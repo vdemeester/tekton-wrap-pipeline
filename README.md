@@ -10,7 +10,7 @@ workspace in a Pipeline.
 
 ## Install
 
-To install the `TaskGroup` custom task, you will need
+To install the `OCIPipeline` custom task, you will need
 [`ko`](https://github.com/google/ko) until a release is being
 published.
 
