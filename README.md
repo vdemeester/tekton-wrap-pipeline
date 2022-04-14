@@ -1,4 +1,36 @@
-# Tekton `OCIPipeline` Custom Task
+# Tekton *Wrap* Pipeline Custom Task
+
+Tekton [custom
+task](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)
+that allows to run a `Pipeline` with `emptydir` workspaces that will
+be using different mean to transfer data from a one `Task` to the
+other.
+
+This is a experimentation around not using PVC for sharing data with
+workspace in a Pipeline.
+
+There is currently one type, `OCIPipeline`, but the goal is to support
+more like `rsync`, `s3`, `gcs`, …
+
+## Install
+
+To install this custom task, you will need
+[`ko`](https://github.com/google/ko) until a release is being
+published.
+
+```bash
+# In a checkout of this repository
+$ export KO_DOCKER_REPO={prefix-for-image-reference} # e.g.: quay.io/vdemeest
+$ ko apply -f config
+2022/03/28 14:53:16 Using base gcr.io/distroless/static:nonroot@sha256:2556293984c5738fc75208cce52cf0a4762c709cf38e4bf8def65a61992da0ad for github.com/openshift-pipelines/tekton-wrap-pipeline/cmd/controller
+# […]
+deployment.apps/tekton-wrap-pipeline-controller configured
+```
+
+This will build and install the custom task controller on your
+cluster, in the `tekton-pipelines` namespaces.
+
+## `OCIPipeline`
 
 Tekton [custom
 task](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)
@@ -8,27 +40,9 @@ be using oci images to transfer data from a one `Task` to the other.
 This is a experimentation around not using PVC for sharing data with
 workspace in a Pipeline.
 
-## Install
+### Usage
 
-To install the `OCIPipeline` custom task, you will need
-[`ko`](https://github.com/google/ko) until a release is being
-published.
-
-```bash
-# In a checkout of this repository
-$ export KO_DOCKER_REPO={prefix-for-image-reference} # e.g.: quay.io/vdemeest
-$ ko apply -f config
-2022/03/28 14:53:16 Using base gcr.io/distroless/static:nonroot@sha256:2556293984c5738fc75208cce52cf0a4762c709cf38e4bf8def65a61992da0ad for github.com/vdemeester/tekton-oci-pipeline/cmd/controller
-# […]
-deployment.apps/tekton-oci-pipeline-controller configured
-```
-
-This will build and install the `OCI` controller on your
-cluster, in the `tekton-pipelines` namespaces.
-
-## Usage
-
-### Using `Run`
+#### Using `Run`
 
 To run a `simple-pipeline` `Pipeline` defined below, we can just define a `Run`
 and refer to the `Pipeline` with `OCIPipeline` as a type. The type
@@ -115,7 +129,7 @@ configuration:
   reference.
 - `ocipipeline.base`: this is the *initial* base image to use for
   workspaces. The default is
-  `ghcr.io/vdemeester/tekton-oci-pipeline/base:latest` which comes from
+  `ghcr.io/openshift-pipelines/tekton-wrap-pipeline/base:latest` which comes from
   [`./images/base`](./images/base).
 
 ## Limitations

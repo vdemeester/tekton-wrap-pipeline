@@ -15,14 +15,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tekton-oci-pipeline-controller
+  name: tekton-wrap-pipeline-controller
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
     app.kubernetes.io/version: "devel"
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
     pipeline.tekton.dev/release: "devel"
     # labels below are related to istio and should not be used for resource lookup
@@ -34,7 +34,7 @@ spec:
       app.kubernetes.io/name: controller
       app.kubernetes.io/component: controller
       app.kubernetes.io/instance: default
-      app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+      app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
   template:
     metadata:
       annotations:
@@ -44,17 +44,17 @@ spec:
         app.kubernetes.io/component: controller
         app.kubernetes.io/instance: default
         app.kubernetes.io/version: "devel"
-        app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+        app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
         pipeline.tekton.dev/release: "devel"
         # labels below are related to istio and should not be used for resource lookup
-        app: tekton-oci-pipeline-controller
+        app: tekton-wrap-pipeline-controller
         version: "devel"
     spec:
-      serviceAccountName: tekton-oci-pipeline-controller
+      serviceAccountName: tekton-wrap-pipeline-controller
       containers:
-      - name: tekton-oci-pipeline-controller
-        image: ko://github.com/vdemeester/tekton-oci-pipeline/cmd/controller
+      - name: tekton-wrap-pipeline-controller
+        image: ko://github.com/openshift-pipelines/tekton-wrap-pipeline/cmd/controller
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -67,7 +67,7 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
         - name: METRICS_DOMAIN
-          value: experimental.tekton.dev/oci-pipelines
+          value: experimental.tekton.dev/wrap-pipelines
         securityContext:
           allowPrivilegeEscalation: false
-          runAsUser: 1001
+          #runAsUser: 1001

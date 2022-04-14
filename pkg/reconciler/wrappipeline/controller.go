@@ -1,4 +1,4 @@
-package ocipipeline
+package wrappipeline
 
 import (
 	"context"

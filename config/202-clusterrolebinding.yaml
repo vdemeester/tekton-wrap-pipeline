@@ -15,88 +15,88 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-oci-pipeline-controller-cluster-access
+  name: tekton-wrap-pipeline-controller-cluster-access
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 subjects:
   - kind: ServiceAccount
-    name: tekton-oci-pipeline-controller
+    name: tekton-wrap-pipeline-controller
     namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: tekton-oci-pipeline-controller-cluster-access
+  name: tekton-wrap-pipeline-controller-cluster-access
   apiGroup: rbac.authorization.k8s.io
 ---
 # If this ClusterRoleBinding is replaced with a RoleBinding
 # then the ClusterRole would be namespaced. The access described by
-# the tekton-oci-pipeline-controller-tenant-access ClusterRole would
+# the tekton-wrap-pipeline-controller-tenant-access ClusterRole would
 # be scoped to individual tenant namespaces.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-oci-pipeline-controller-tenant-access
+  name: tekton-wrap-pipeline-controller-tenant-access
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 subjects:
   - kind: ServiceAccount
-    name: tekton-oci-pipeline-controller
+    name: tekton-wrap-pipeline-controller
     namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: tekton-oci-pipeline-controller-tenant-access
+  name: tekton-wrap-pipeline-controller-tenant-access
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-oci-pipeline-controller-leaderelection
+  name: tekton-wrap-pipeline-controller-leaderelection
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 subjects:
   - kind: ServiceAccount
-    name: tekton-oci-pipeline-controller
+    name: tekton-wrap-pipeline-controller
     namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: tekton-oci-pipeline-leader-election
+  name: tekton-wrap-pipeline-leader-election
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-oci-pipeline-webhook-cluster-access
+  name: tekton-wrap-pipeline-webhook-cluster-access
   labels:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 subjects:
   - kind: ServiceAccount
-    name: tekton-oci-pipeline-webhook
+    name: tekton-wrap-pipeline-webhook
     namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: tekton-oci-pipeline-webhook-cluster-access
+  name: tekton-wrap-pipeline-webhook-cluster-access
   apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: tekton-oci-pipeline-webhook-leaderelection
+  name: tekton-wrap-pipeline-webhook-leaderelection
   labels:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 subjects:
   - kind: ServiceAccount
-    name: tekton-oci-pipeline-webhook
+    name: tekton-wrap-pipeline-webhook
     namespace: tekton-pipelines
 roleRef:
   kind: ClusterRole
-  name: tekton-oci-pipeline-leader-election
+  name: tekton-wrap-pipeline-leader-election
   apiGroup: rbac.authorization.k8s.io

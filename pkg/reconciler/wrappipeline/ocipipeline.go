@@ -1,4 +1,4 @@
-package ocipipeline
+package wrappipeline
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	DefaultBaseImage = "ghcr.io/vdemeester/tekton-oci-pipeline/base:latest"
+	DefaultBaseImage = "ghcr.io/openshift-pipelines/tekton-wrap-pipeline/base:latest"
 
 	BaseParamName   = "ocipipeline.base"
 	TargetParamName = "ocipipeline.target"

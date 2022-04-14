@@ -15,11 +15,11 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-oci-pipeline-controller-cluster-access
+  name: tekton-wrap-pipeline-controller-cluster-access
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 rules:
     # Controller needs cluster access to all of the CRDs that it is responsible for managing.
   - apiGroups: ["tekton.dev"]
@@ -32,7 +32,7 @@ rules:
     resources: ["runs/status", "taskruns/status"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["custom.tekton.dev"]
-    resources: ["oci-pipelines"]
+    resources: ["wrap-pipelines"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["tekton.dev"]
     resources: ["taskruns/finalizers", "pipelineruns/finalizers", "runs/finalizers"]
@@ -42,11 +42,11 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   # This is the access that the controller needs on a per-namespace basis.
-  name: tekton-oci-pipeline-controller-tenant-access
+  name: tekton-wrap-pipeline-controller-tenant-access
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -55,11 +55,11 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-oci-pipeline-webhook-cluster-access
+  name: tekton-wrap-pipeline-webhook-cluster-access
   labels:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 rules:
   # The webhook needs to be able to list and update customresourcedefinitions,
   # mainly to update the webhook certificates.
@@ -76,14 +76,14 @@ rules:
     resources: ["mutatingwebhookconfigurations"]
     # This mutating webhook is responsible for applying defaults to tekton objects
     # as they are received.
-    resourceNames: ["webhook.oci-pipeline.custom.tekton.dev"]
+    resourceNames: ["webhook.wrap-pipeline.custom.tekton.dev"]
     # When there are changes to the configs or secrets, knative updates the mutatingwebhook config
     # with the updated certificates or the refreshed set of rules.
     verbs: ["get", "update"]
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["validatingwebhookconfigurations"]
-    # validation.webhook.oci-pipeline.custom.tekton.dev performs schema validation when you, for example, create TaskLoops.
-    resourceNames: ["validation.webhook.oci-pipeline.custom.tekton.dev"]
+    # validation.webhook.wrap-pipeline.custom.tekton.dev performs schema validation when you, for example, create TaskLoops.
+    resourceNames: ["validation.webhook.wrap-pipeline.custom.tekton.dev"]
     # When there are changes to the configs or secrets, knative updates the validatingwebhook config
     # with the updated certificates or the refreshed set of rules.
     verbs: ["get", "update"]
@@ -95,10 +95,10 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: tekton-oci-pipeline-leader-election
+  name: tekton-wrap-pipeline-leader-election
   labels:
     app.kubernetes.io/instance: default
-    app.kubernetes.io/part-of: tekton-experimental-oci-pipelines
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
 rules:
   # We uses leases for leaderelection
   - apiGroups: ["coordination.k8s.io"]

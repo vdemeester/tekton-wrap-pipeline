@@ -1,4 +1,4 @@
-module github.com/vdemeester/tekton-oci-pipeline
+module github.com/openshift-pipelines/tekton-wrap-pipeline
 
 go 1.16
 
