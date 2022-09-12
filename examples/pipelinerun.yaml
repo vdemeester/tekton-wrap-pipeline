@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mysa
+secrets:
+  - name: regcred
+---
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
@@ -43,21 +50,20 @@ spec:
         script: |
           pwd && ls -la && go build -v ./...
 ---
-apiVersion: tekton.dev/v1alpha1
-kind: Run
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
 metadata:
-  name: run-simple-pipeline
+  name: simple-pipelinerun
 spec:
-  serviceAccountName: ocipipeline-sa
-  ref:
-    apiVersion: tekton.dev/v1alpha1
-    kind: OCIPipeline
-    name: simple-pipeline
+  serviceAccountName: mysa
+  pipelineRef:
+    resolver: wrap
+    params:
+    - name: pipelineref
+      value: simple-pipeline
+    - name: target
+      value: docker.io/vdemeester/pipelinerun-$(context.pipelinerun.name)-{{workspace}}:latest
   params:
-  #- name: ocipipeline.base
-  #  value: docker.io/vdemeester/oci-workspace-base:latest
-  - name: ocipipeline.target
-    value: docker.io/vdemeester/pipelinerun-$(context.run.name)-{{workspace}}:latest
   - name: git-url
     value: https://github.com/vdemeester/go-helloworld-app
   workspaces:
