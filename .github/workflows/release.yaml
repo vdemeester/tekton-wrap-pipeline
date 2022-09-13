@@ -25,7 +25,7 @@ jobs:
         images: ghcr.io/${{ github.repository }}/base
         flavor: |
           latest=true
-    - uses: docker/build-push-action@v2
+    - uses: docker/build-push-action@v3
       with:
         push: true
         context: ./images/base
