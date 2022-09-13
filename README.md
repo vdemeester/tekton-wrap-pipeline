@@ -1,4 +1,4 @@
-# Tekton *Wrap* Pipeline Custom Task
+# Tekton *Wrap* Pipeline Reslover
 
 Tekton resolver that allows to run a `Pipeline` with `emptydir`
 workspaces that will be using different mean to transfer data from a
