@@ -16,6 +16,7 @@ spec:
     default: https://github.com/vdemeester/buildkit-tekton
   workspaces:
   - name: sources
+  - name: cache
   tasks:
   - name: grab-source
     params:
@@ -24,31 +25,39 @@ spec:
     workspaces:
     - name: output
       workspace: sources
+    - name: cache
+      workspace: cache
     taskSpec:
       params:
       - name: url
         type: string
       workspaces:
       - name: output
+      - name: cache
       steps:
       - name: clone
         image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0
         script: |
           /ko-app/git-init -url=$(params.url) -revision=main -path=$(workspaces.output.path)
+          echo "foo" > $(workspaces.cache.path)/bar
   - name: build
     runAfter: [grab-source]
     workspaces:
     - name: sources
       workspace: sources
+    - name: cache
+      workspace: cache
     taskSpec:
       workspaces:
       - name: sources
+      - name: cache
       steps:
       - name: build
         image: docker.io/library/golang:latest
         workingdir: $(workspaces.sources.path)
         script: |
           pwd && ls -la && go build -v ./...
+          cat $(workspaces.cache.path)/bar
 ---
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -61,11 +70,15 @@ spec:
     params:
     - name: pipelineref
       value: simple-pipeline
+    - name: workspaces
+      value: sources,cache
     - name: target
-      value: docker.io/vdemeester/pipelinerun-$(context.pipelinerun.name)-{{workspace}}:latest
+      value: quay.io/vdemeest/pipelinerun-$(context.pipelineRun.name)-{{workspace}}:latest
   params:
   - name: git-url
     value: https://github.com/vdemeester/go-helloworld-app
   workspaces:
   - name: sources
+    emptyDir: {}
+  - name: cache
     emptyDir: {}
