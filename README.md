@@ -1,15 +1,13 @@
 # Tekton *Wrap* Pipeline Custom Task
 
-Tekton [custom
-task](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)
-that allows to run a `Pipeline` with `emptydir` workspaces that will
-be using different mean to transfer data from a one `Task` to the
-other.
+Tekton resolver that allows to run a `Pipeline` with `emptydir`
+workspaces that will be using different mean to transfer data from a
+one `Task` to the other.
 
 This is a experimentation around not using PVC for sharing data with
 workspace in a Pipeline.
 
-There is currently one type, `OCIPipeline`, but the goal is to support
+There is currently one type, `oci`, but the goal is to support
 more like `rsync`, `s3`, `gcs`, …
 
 ## Install
@@ -28,28 +26,11 @@ deployment.apps/tekton-wrap-pipeline-controller configured
 ```
 
 This will build and install the custom task controller on your
-cluster, in the `tekton-pipelines` namespaces.
+cluster, in the `tekton-pipelines-resolvers` namespaces.
 
-## `OCIPipeline`
+## Wrapping with `oci`
 
-Tekton [custom
-task](https://github.com/tektoncd/pipeline/blob/main/docs/runs.md)
-that allows to run a `Pipeline` with `emptydir` workspaces that will
-be using oci images to transfer data from a one `Task` to the other.
-
-This is a experimentation around not using PVC for sharing data with
-workspace in a Pipeline.
-
-### Usage
-
-#### Using `Run`
-
-To run a `simple-pipeline` `Pipeline` defined below, we can just define a `Run`
-and refer to the `Pipeline` with `OCIPipeline` as a type. The type
-`OCIPipeline` doesn't really exists but the `Run` gets picked up by
-the controller as its own.
-
-```yaml
+```
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
@@ -61,6 +42,7 @@ spec:
     default: https://github.com/vdemeester/buildkit-tekton
   workspaces:
   - name: sources
+  - name: cache
   tasks:
   - name: grab-source
     params:
@@ -69,65 +51,76 @@ spec:
     workspaces:
     - name: output
       workspace: sources
+    - name: cache
+      workspace: cache
     taskSpec:
       params:
       - name: url
         type: string
       workspaces:
       - name: output
+      - name: cache
       steps:
       - name: clone
         image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0
         script: |
           /ko-app/git-init -url=$(params.url) -revision=main -path=$(workspaces.output.path)
+          echo "foo" > $(workspaces.cache.path)/bar
   - name: build
     runAfter: [grab-source]
     workspaces:
     - name: sources
       workspace: sources
+    - name: cache
+      workspace: cache
     taskSpec:
       workspaces:
       - name: sources
+      - name: cache
       steps:
       - name: build
         image: docker.io/library/golang:latest
         workingdir: $(workspaces.sources.path)
         script: |
           pwd && ls -la && go build -v ./...
+          cat $(workspaces.cache.path)/bar
 ---
-apiVersion: tekton.dev/v1alpha1
-kind: Run
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
 metadata:
-  name: run-simple-pipeline
+  name: simple-pipelinerun
 spec:
-  serviceAccountName: ocipipeline-sa
-  ref:
-    apiVersion: tekton.dev/v1alpha1
-    kind: OCIPipeline
-    name: simple-pipeline
+  serviceAccountName: mysa
+  pipelineRef:
+    resolver: wrap
+    params:
+    - name: pipelineref
+      value: simple-pipeline
+    - name: workspaces
+      value: sources,cache
+    - name: target
+      value: quay.io/vdemeest/pipelinerun-$(context.pipelineRun.name)-{{workspace}}:latest
   params:
-  #- name: ocipipeline.base
-  #  value: docker.io/vdemeester/oci-workspace-base:latest
-  - name: ocipipeline.target
-    value: docker.io/vdemeester/pipelinerun-$(context.run.name)-{{workspace}}:latest
   - name: git-url
     value: https://github.com/vdemeester/go-helloworld-app
   workspaces:
   - name: sources
     emptyDir: {}
+  - name: cache
+    emptyDir: {}
 ```
-
-The controller picks up all workspace with `emptydir` specified in the
-`Run` and back them up with an oci image instead.
 
 The controller picks up the following parameters as it's own
 configuration:
-- `ocipipeline.target`: this is the oci image reference to push
-  to. It's possible (and recommended) to use `{{workspace}}` to have
-  different image for different workspaces. It's also possible to use
+- `pipelineref`: which pipeline to fetch. *Note: later, we might
+  support delegating to other resolvers*
+- `workspaces`: comma separated list of workspace to "wrap"
+- `target`: this is the oci image reference to push to. It's possible
+  (and recommended) to use `{{workspace}}` to have different image for
+  different workspaces. It's also possible to use
   `$(context.run.name)` to include the name of the run into the
   reference.
-- `ocipipeline.base`: this is the *initial* base image to use for
+- `base`: this is the *initial* base image to use for
   workspaces. The default is
   `ghcr.io/openshift-pipelines/tekton-wrap-pipeline/base:latest` which comes from
   [`./images/base`](./images/base).
@@ -149,4 +142,5 @@ The way it might/should work :
   tasks are running into parallel with the same workspace, as one will
   override the previous one. We could also "rebase" on top of the
   latest build just before pushing, which would "remove" a tiny bit
-  that problem.
+  that problem. We "could" try to use `results`, but it would consume
+  result "resource" from the user.
