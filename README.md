@@ -144,3 +144,27 @@ The way it might/should work :
   latest build just before pushing, which would "remove" a tiny bit
   that problem. We "could" try to use `results`, but it would consume
   result "resource" from the user.
+
+## Ideas
+
+### Resolving resolvers
+
+```yaml
+# […]
+spec:
+  serviceAccountName: mysa
+  pipelineRef:
+    resolver: wrap
+    params:
+    - name: pipelineref
+      value: |
+        resolver: foo
+        params:
+        - name: bar
+          value: baz
+    - name: workspaces
+      value: sources,cache
+    - name: target
+      value: quay.io/vdemeest/pipelinerun-$(context.pipelineRun.name)-{{workspace}}:latest
+# […]
+```
