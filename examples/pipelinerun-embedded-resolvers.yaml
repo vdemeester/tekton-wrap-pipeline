@@ -12,9 +12,9 @@ spec:
         resolver: git
         params:
         - name: url
-          value: https://github.com/vdemeester/tekton-wrap-pipeline
+          value: https://github.com/openshift-pipelines/tekton-wrap-pipeline
         - name: revision
-          value: more-wrappers
+          value: main
         - name: pathInRepo
           value: examples/simple-pipeline.yaml
     - name: workspaces
