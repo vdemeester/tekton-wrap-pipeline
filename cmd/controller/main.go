@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/openshift-pipelines/tekton-wrap-pipeline/pkg/resolver/wrap"
+	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolver/wrap"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
