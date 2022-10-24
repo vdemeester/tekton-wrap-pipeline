@@ -1,0 +1,31 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipelinerun-embedded-resolvers
+spec:
+  serviceAccountName: mysa
+  pipelineRef:
+    resolver: wrap.oci
+    params:
+    - name: pipelineref
+      value: |
+        resolver: git
+        params:
+        - name: url
+          value: https://github.com/vdemeester/tekton-wrap-pipeline
+        - name: revision
+          value: more-wrappers
+        - name: pathInRepo
+          value: examples/simple-pipeline.yaml
+    - name: workspaces
+      value: sources,cache
+    - name: target
+      value: quay.io/vdemeest/pipelinerun-$(context.pipelineRun.name)-{{workspace}}:latest
+  params:
+  - name: git-url
+    value: https://github.com/vdemeester/go-helloworld-app
+  workspaces:
+  - name: sources
+    emptyDir: {}
+  - name: cache
+    emptyDir: {}

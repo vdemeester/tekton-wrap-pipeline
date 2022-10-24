@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
@@ -71,6 +72,8 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// Validate propagated parameters
 	errs = errs.Also(ps.validateInlineParameters(ctx))
+	// Validate propagated workspaces
+	errs = errs.Also(ps.validatePropagatedWorkspaces(ctx))
 
 	if ps.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
@@ -143,7 +146,35 @@ func (ps *PipelineRunSpec) validatePipelineRunParameters(ctx context.Context) (e
 			}
 		}
 	}
+	return errs
+}
 
+// validatePropagatedWorkspaces validates workspaces that are propagated.
+func (ps *PipelineRunSpec) validatePropagatedWorkspaces(ctx context.Context) (errs *apis.FieldError) {
+	if ps.PipelineSpec == nil {
+		return errs
+	}
+	workspaceNames := sets.NewString()
+	for _, w := range ps.Workspaces {
+		workspaceNames.Insert(w.Name)
+	}
+
+	for _, w := range ps.PipelineSpec.Workspaces {
+		workspaceNames.Insert(w.Name)
+	}
+
+	for i, pt := range ps.PipelineSpec.Tasks {
+		for _, w := range pt.Workspaces {
+			workspaceNames.Insert(w.Name)
+		}
+		errs = errs.Also(pt.validateWorkspaces(workspaceNames).ViaIndex(i))
+	}
+	for i, pt := range ps.PipelineSpec.Finally {
+		for _, w := range pt.Workspaces {
+			workspaceNames.Insert(w.Name)
+		}
+		errs = errs.Also(pt.validateWorkspaces(workspaceNames).ViaIndex(i))
+	}
 	return errs
 }
 
@@ -156,66 +187,62 @@ func (ps *PipelineRunSpec) validateInlineParameters(ctx context.Context) (errs *
 	if ps.PipelineSpec == nil {
 		return errs
 	}
-	var paramSpec []ParamSpec
+	paramSpecForValidation := make(map[string]ParamSpec)
 	for _, p := range ps.Params {
-		pSpec := ParamSpec{
-			Name:    p.Name,
-			Default: &p.Value,
-		}
-		paramSpec = append(paramSpec, pSpec)
+		paramSpecForValidation = createParamSpecFromParam(p, paramSpecForValidation)
 	}
-	paramSpec = appendParamSpec(paramSpec, ps.PipelineSpec.Params)
-	for _, pt := range ps.PipelineSpec.Tasks {
-		paramSpec = appendParam(paramSpec, pt.Params)
-		if pt.TaskSpec != nil && pt.TaskSpec.Params != nil {
-			paramSpec = appendParamSpec(paramSpec, pt.TaskSpec.Params)
+	for _, p := range ps.PipelineSpec.Params {
+		var err *apis.FieldError
+		paramSpecForValidation, err = combineParamSpec(p, paramSpecForValidation)
+		if err != nil {
+			errs = errs.Also(err)
 		}
+	}
+	for _, pt := range ps.PipelineSpec.Tasks {
+		paramSpecForValidation = appendPipelineTaskParams(paramSpecForValidation, pt.Params)
+		if pt.TaskSpec != nil && pt.TaskSpec.Params != nil {
+			for _, p := range pt.TaskSpec.Params {
+				var err *apis.FieldError
+				paramSpecForValidation, err = combineParamSpec(p, paramSpecForValidation)
+				if err != nil {
+					errs = errs.Also(err)
+				}
+			}
+		}
+	}
+	var paramSpec []ParamSpec
+	for _, v := range paramSpecForValidation {
+		paramSpec = append(paramSpec, v)
 	}
 	if ps.PipelineSpec != nil && ps.PipelineSpec.Tasks != nil {
 		for _, pt := range ps.PipelineSpec.Tasks {
 			if pt.TaskSpec != nil && pt.TaskSpec.Steps != nil {
+				errs = errs.Also(ValidateParameterTypes(ctx, paramSpec))
 				errs = errs.Also(ValidateParameterVariables(
 					config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), pt.TaskSpec.Steps, paramSpec))
 			}
 		}
+		errs = errs.Also(ValidatePipelineParameterVariables(
+			config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), ps.PipelineSpec.Tasks, paramSpec))
 	}
 	return errs
 }
 
-func appendParamSpec(paramSpec []ParamSpec, params []ParamSpec) []ParamSpec {
+func appendPipelineTaskParams(paramSpecForValidation map[string]ParamSpec, params []Param) map[string]ParamSpec {
 	for _, p := range params {
-		skip := false
-		for _, ps := range paramSpec {
-			if ps.Name == p.Name {
-				skip = true
-				break
+		if pSpec, ok := paramSpecForValidation[p.Name]; ok {
+			if p.Value.ObjectVal != nil {
+				for k, v := range p.Value.ObjectVal {
+					pSpec.Default.ObjectVal[k] = v
+					pSpec.Properties[k] = PropertySpec{Type: ParamTypeString}
+				}
 			}
-		}
-		if !skip {
-			paramSpec = append(paramSpec, p)
+			paramSpecForValidation[p.Name] = pSpec
+		} else {
+			paramSpecForValidation = createParamSpecFromParam(p, paramSpecForValidation)
 		}
 	}
-	return paramSpec
-}
-
-func appendParam(paramSpec []ParamSpec, params []Param) []ParamSpec {
-	for _, p := range params {
-		skip := false
-		for _, ps := range paramSpec {
-			if ps.Name == p.Name {
-				skip = true
-				break
-			}
-		}
-		if !skip {
-			pSpec := ParamSpec{
-				Name:    p.Name,
-				Default: &p.Value,
-			}
-			paramSpec = append(paramSpec, pSpec)
-		}
-	}
-	return paramSpec
+	return paramSpecForValidation
 }
 
 func validateSpecStatus(status PipelineRunSpecStatus) *apis.FieldError {

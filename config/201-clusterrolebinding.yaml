@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-pipelines-wrap-resolvers
+  namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-experimental-wrap-pipelines
+subjects:
+  - kind: ServiceAccount
+    name: tekton-pipelines-wrap-resolvers
+    namespace: tekton-pipelines-resolvers
+roleRef:
+  kind: ClusterRole
+  name: tekton-pipelines-wrap-resolvers-resolution-request-updates
+  apiGroup: rbac.authorization.k8s.io

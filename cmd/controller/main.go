@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolver/wrap"
+	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolver/oci"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
 	filteredinformerfactory "knative.dev/pkg/client/injection/kube/informers/factory/filtered"
@@ -18,6 +18,6 @@ func main() {
 	ctx := filteredinformerfactory.WithSelectors(signals.NewContext(), v1alpha1.ManagedByLabelKey)
 
 	sharedmain.MainWithContext(ctx, ControllerLogKey,
-		framework.NewController(ctx, &wrap.Resolver{}),
+		framework.NewController(ctx, &oci.Resolver{}),
 	)
 }

@@ -51,7 +51,7 @@ spec:
         app: tekton-wrap-pipeline-controller
         version: "devel"
     spec:
-      serviceAccountName: tekton-pipelines-resolvers
+      serviceAccountName: tekton-pipelines-wrap-resolvers
       containers:
       - name: tekton-wrap-pipeline-controller
         image: ko://github.com/openshift-pipelines/tekton-wrap-pipeline/cmd/controller
