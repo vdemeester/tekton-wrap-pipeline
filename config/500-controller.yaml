@@ -70,4 +70,12 @@ spec:
           value: experimental.tekton.dev/wrap-pipelines
         securityContext:
           allowPrivilegeEscalation: false
-          #runAsUser: 1001
+          capabilities:
+            drop:
+            - "ALL"
+          # User 65532 is the nonroot user ID
+          runAsUser: 65532
+          runAsGroup: 65532
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault

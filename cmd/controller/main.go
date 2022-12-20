@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolver/cache"
 	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolver/oci"
 	"github.com/tektoncd/pipeline/pkg/apis/resolution/v1alpha1"
 	"github.com/tektoncd/pipeline/pkg/resolution/resolver/framework"
@@ -19,5 +20,6 @@ func main() {
 
 	sharedmain.MainWithContext(ctx, ControllerLogKey,
 		framework.NewController(ctx, &oci.Resolver{}),
+		framework.NewController(ctx, &cache.Resolver{}),
 	)
 }

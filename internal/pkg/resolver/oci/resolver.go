@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/resolve"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	clientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
 	pipelineclient "github.com/tektoncd/pipeline/pkg/client/injection/client"
@@ -58,6 +59,19 @@ func (r *ResolvedWrapperResource) Annotations() map[string]string {
 	}
 }
 
+// Source is the source reference of the remote data that records where the remote
+// file came from including the url, digest and the entrypoint.
+func (r *ResolvedWrapperResource) Source() *v1beta1.ConfigSource {
+	// FIXME handle Source
+	return &v1beta1.ConfigSource{
+		URI: "",
+		Digest: map[string]string{
+			"sha1": "",
+		},
+		EntryPoint: "",
+	}
+}
+
 // Resolver implements a framework.Resolver that can "wrap" a Pipeline for not using a PVC for workspaces
 type Resolver struct {
 	kubeClientSet     kubernetes.Interface
@@ -95,13 +109,13 @@ func (r *Resolver) GetSelector(context.Context) map[string]string {
 }
 
 // ValidateParams ensures parameters from a request are as expected.
-func (r *Resolver) ValidateParams(ctx context.Context, params map[string]string) error {
+func (r *Resolver) ValidateParams(ctx context.Context, params []v1beta1.Param) error {
 	_, err := populateParamsWithDefaults(ctx, params)
 	return err
 }
 
 // Resolve uses the given params to resolve the requested file or resource.
-func (r *Resolver) Resolve(ctx context.Context, origParams map[string]string) (framework.ResolvedResource, error) {
+func (r *Resolver) Resolve(ctx context.Context, origParams []v1beta1.Param) (framework.ResolvedResource, error) {
 	logger := logging.FromContext(ctx)
 
 	baseimage := DefaultBaseImage
@@ -112,7 +126,7 @@ func (r *Resolver) Resolve(ctx context.Context, origParams map[string]string) (f
 		return nil, err
 	}
 
-	pipeline, err := ResolvePipeline(ctx, r, namespace, params[PipelineRefParam])
+	pipeline, err := resolve.Pipeline(ctx, r.rrclientSet, r.pipelineClientSet, namespace, params[PipelineRefParam])
 	if err != nil {
 		logger.Infof("failed to load pipeline %s from namespace %s: %v", params[PipelineRefParam], namespace, err)
 		return nil, err
@@ -253,28 +267,33 @@ func (r *Resolver) getTaskSpec(ctx context.Context, name string) (*v1beta1.TaskS
 	return &t.Spec, nil
 }
 
-func populateParamsWithDefaults(ctx context.Context, params map[string]string) (map[string]string, error) {
+func populateParamsWithDefaults(ctx context.Context, params []v1beta1.Param) (map[string]string, error) {
 	conf := framework.GetResolverConfigFromContext(ctx)
+
+	paramsMap := make(map[string]string)
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value.StringVal
+	}
 
 	var missingParams []string
 
-	if _, ok := params[WrapperParam]; !ok {
+	if _, ok := paramsMap[WrapperParam]; !ok {
 		if wrapperVal, ok := conf["default-wrapper"]; !ok {
 			missingParams = append(missingParams, WrapperParam)
 		} else {
-			params[WrapperParam] = wrapperVal
+			paramsMap[WrapperParam] = wrapperVal
 		}
 	}
 
-	if _, ok := params[PipelineRefParam]; !ok {
+	if _, ok := paramsMap[PipelineRefParam]; !ok {
 		missingParams = append(missingParams, PipelineRefParam)
 	}
-	if _, ok := params[TargetParam]; !ok {
+	if _, ok := paramsMap[TargetParam]; !ok {
 		missingParams = append(missingParams, TargetParam)
 	}
-	if _, ok := params[WorkspacesParam]; !ok {
+	if _, ok := paramsMap[WorkspacesParam]; !ok {
 		missingParams = append(missingParams, WorkspacesParam)
 	}
 
-	return params, nil
+	return paramsMap, nil
 }

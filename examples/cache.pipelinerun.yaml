@@ -1,0 +1,196 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: my-golang-build
+spec:
+  description: >-
+    This Task is Golang task to build Go projects.
+  params:
+  - name: packages
+    description: "packages to build (default: ./cmd/...)"
+    default: "./cmd/..."
+  - name: version
+    description: golang version to use for builds
+    default: "latest"
+  - name: flags
+    description: flags to use for the test command
+    default: -v
+  - name: GOOS
+    description: "running program's operating system target"
+    default: linux
+  - name: GOARCH
+    description: "running program's architecture target"
+    default: amd64
+  - name: CGO_ENABLED
+    description: "Toggle cgo tool during Go build. Use value '0' to disable cgo (for static builds)."
+    default: ""
+  - name: GOSUMDB
+    description: "Go checksum database url. Use value 'off' to disable checksum validation."
+    default: ""
+  workspaces:
+  - name: source
+  - name: go-cache
+    optional: true
+  - name: gomod-cache
+    optional: true
+  steps:
+  - name: build
+    image: docker.io/library/golang:$(params.version)
+    workingDir: $(workspaces.source.path)
+    script: |
+      [[ "$(workspaces.cache-go.bound)" == "true" ]] && {
+        export GOCACHE=$(workspaces.cache-go.path)
+      }
+      [[ "$(workspaces.cache-gomod.bound)" == "true" ]] && {
+        export GOMODCACHE=$(workspaces.cache-gomod.path)
+      }
+      go build $(params.flags) $(params.packages)
+    env:
+    - name: GOOS
+      value: "$(params.GOOS)"
+    - name: GOARCH
+      value: "$(params.GOARCH)"
+    - name: CGO_ENABLED
+      value: "$(params.CGO_ENABLED)"
+    - name: GOSUMDB
+      value: "$(params.GOSUMDB)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: my-golang-test
+spec:
+  description: >-
+    This Task is Golang task to test Go projects.
+  params:
+  - name: packages
+    description: "packages to test (default: ./...)"
+    default: "./..."
+  - name: context
+    description: path to the directory to use as context.
+    default: "."
+  - name: version
+    description: golang version to use for tests
+    default: "latest"
+  - name: flags
+    description: flags to use for the test command
+    default: -race -cover -v
+  - name: GOOS
+    description: "running program's operating system target"
+    default: linux
+  - name: GOARCH
+    description: "running program's architecture target"
+    default: amd64
+  workspaces:
+  - name: source
+  - name: go-cache
+    optional: true
+  - name: gomod-cache
+    optional: true
+  steps:
+  - name: unit-test
+    image: docker.io/library/golang:$(params.version)
+    workingDir: $(workspaces.source.path)
+    script: |
+      [[ "$(workspaces.cache-go.bound)" == "true" ]] && {
+        export GOCACHE=$(workspaces.cache-go.path)
+      }
+      [[ "$(workspaces.cache-gomod.bound)" == "true" ]] && {
+        export GOMODCACHE=$(workspaces.cache-gomod.path)
+      }
+      go test $(params.flags) $(params.packages)
+    env:
+    - name: GOOS
+      value: "$(params.GOOS)"
+    - name: GOARCH
+      value: "$(params.GOARCH)"
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: build-go-with-optional-cache
+spec:
+  params:
+  - name: git-url
+    type: string
+  workspaces:
+  - name: sources
+  - name: go-cache
+    optional: true
+  - name: gomod-cache
+    optional: true
+  tasks:
+  - name: grab-source
+    params:
+    - name: url
+      value: $(params.git-url)
+    workspaces:
+    - name: output
+      workspace: sources
+    taskSpec:
+      params:
+      - name: url
+        type: string
+      workspaces:
+      - name: output
+      steps:
+      - name: clone
+        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.21.0
+        script: |
+          /ko-app/git-init -url=$(params.url) -revision=main -path=$(workspaces.output.path)
+  - name: build
+    runAfter: [grab-source]
+    workspaces:
+    - name: sources
+      workspace: sources
+    - name: go-cache
+      workspace: go-cache
+    - name: gomod-cache
+      workspace: gomod-cache
+    taskRef:
+      name: my-golang-build
+  - name: test
+    runAfter: [build]
+    workspaces:
+    - name: sources
+      workspace: sources
+    - name: go-cache
+      workspace: go-cache
+    - name: gomod-cache
+      workspace: gomod-cache
+    taskRef:
+      name: my-golang-test
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: simple-pipelinerun
+spec:
+  serviceAccountName: mysa
+  pipelineRef:
+    resolver: wrap.cache
+    params:
+    - name: pipelineref
+      value: build-go-with-optional-cache
+    - name: workspaces
+      value: "go-cache,gomod-cache"
+    - name: files
+      value: "**/go.sum"
+    - name: target
+      value: "quay.io/vdemeest/cache/{{workspace}}:{{hash}}"
+  params:
+  - name: git-url
+    value: https://github.com/tektoncd/pipeline
+  workspaces:
+  - name: shared-workspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteMany
+        resources:
+          requests:
+            storage: 100Mi
+  - name: go-cache
+    emptyDir: {}
+  - name: gomod-cache
+    emptyDir: {}
