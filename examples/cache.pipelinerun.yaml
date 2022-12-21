@@ -141,7 +141,7 @@ spec:
   - name: build
     runAfter: [grab-source]
     workspaces:
-    - name: sources
+    - name: source
       workspace: sources
     - name: go-cache
       workspace: go-cache
@@ -152,7 +152,7 @@ spec:
   - name: test
     runAfter: [build]
     workspaces:
-    - name: sources
+    - name: source
       workspace: sources
     - name: go-cache
       workspace: go-cache
@@ -177,16 +177,16 @@ spec:
     - name: files
       value: "**/go.sum"
     - name: target
-      value: "quay.io/vdemeest/cache/{{workspace}}:{{hash}}"
+      value: "quay.io/vdemeest/cache/{{workspace}}:{{hash}"
   params:
   - name: git-url
     value: https://github.com/tektoncd/pipeline
   workspaces:
-  - name: shared-workspace
+  - name: sources
     volumeClaimTemplate:
       spec:
         accessModes:
-          - ReadWriteMany
+          - ReadWriteOnce
         resources:
           requests:
             storage: 100Mi

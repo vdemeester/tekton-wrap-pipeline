@@ -210,6 +210,9 @@ crane export %s | tar -x -C %s
 			Script:     script.String(),
 		})
 		newPipeline.Spec.Tasks[i].TaskRef = nil
+		if newPipeline.Spec.Tasks[i].TaskSpec == nil {
+			newPipeline.Spec.Tasks[i].TaskSpec = &v1beta1.EmbeddedTask{}
+		}
 		newPipeline.Spec.Tasks[i].TaskSpec.TaskSpec = *s
 	}
 
@@ -249,7 +252,7 @@ func (r *Resolver) resolveTaskSpecs(ctx context.Context, pipelineSpec *v1beta1.P
 			taskSpec = &t.TaskSpec.TaskSpec
 		} else {
 			var err error
-			taskSpec, err = r.getTaskSpec(ctx, t.Name)
+			taskSpec, err = r.getTaskSpec(ctx, t.TaskRef.Name)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't fetch taskspec for %s: %v", t.Name, err)
 			}
