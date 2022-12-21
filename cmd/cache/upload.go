@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/openshift-pipelines/tekton-wrap-pipeline/internal/pkg/hash"
@@ -31,7 +30,6 @@ func uploadCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("matches", matches)
 			// TODO: Hash files based of matches
 			hashStr, err := hash.Compute(matches)
 			if err != nil {
