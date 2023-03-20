@@ -36,6 +36,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource":                 schema_pkg_apis_pipeline_v1_ConfigSource(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Matrix":                       schema_pkg_apis_pipeline_v1_Matrix(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.MatrixInclude":                schema_pkg_apis_pipeline_v1_MatrixInclude(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param":                        schema_pkg_apis_pipeline_v1_Param(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamSpec":                    schema_pkg_apis_pipeline_v1_ParamSpec(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ParamValue":                   schema_pkg_apis_pipeline_v1_ParamValue(ref),
@@ -181,6 +182,27 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 										Default: "",
 										Type:    []string{"string"},
 										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"env": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type":       "atomic",
+								"x-kubernetes-patch-merge-key": "name",
+								"x-kubernetes-patch-strategy":  "merge",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "List of environment variables that can be provided to the containers belonging to the pod.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/core/v1.EnvVar"),
 									},
 								},
 							},
@@ -354,7 +376,7 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.HostAlias", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.TopologySpreadConstraint", "k8s.io/api/core/v1.Volume"},
+			"k8s.io/api/core/v1.Affinity", "k8s.io/api/core/v1.EnvVar", "k8s.io/api/core/v1.HostAlias", "k8s.io/api/core/v1.LocalObjectReference", "k8s.io/api/core/v1.PodDNSConfig", "k8s.io/api/core/v1.PodSecurityContext", "k8s.io/api/core/v1.Toleration", "k8s.io/api/core/v1.TopologySpreadConstraint", "k8s.io/api/core/v1.Volume"},
 	}
 }
 
@@ -643,6 +665,66 @@ func schema_pkg_apis_pipeline_v1_Matrix(ref common.ReferenceCallback) common.Ope
 						},
 						SchemaProps: spec.SchemaProps{
 							Description: "Params is a list of parameters used to fan out the pipelineTask Params takes only `Parameters` of type `\"array\"` Each array element is supplied to the `PipelineTask` by substituting `params` of type `\"string\"` in the underlying `Task`. The names of the `params` in the `Matrix` must match the names of the `params` in the underlying `Task` that they will be substituting.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"),
+									},
+								},
+							},
+						},
+					},
+					"include": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Include is a list of MatrixInclude which allows passing in specific combinations of Parameters into the Matrix. Note that Include is in preview mode and not yet supported.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.MatrixInclude"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.MatrixInclude", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Param"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_MatrixInclude(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "MatrixInclude allows passing in a specific combinations of Parameters into the Matrix. Note this struct is in preview mode and not yet supported",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Name the specified combination",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"params": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Params takes only `Parameters` of type `\"string\"` The names of the `params` must match the names of the `params` in the underlying `Task`",
 							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
@@ -1120,7 +1202,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunRunStatus(ref common.ReferenceCallba
 					"status": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Status is the RunStatus for the corresponding Run",
-							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"),
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"),
 						},
 					},
 					"whenExpressions": {
@@ -1146,7 +1228,7 @@ func schema_pkg_apis_pipeline_v1_PipelineRunRunStatus(ref common.ReferenceCallba
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1.RunStatus"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.WhenExpression", "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1.CustomRunStatus"},
 	}
 }
 
@@ -1389,6 +1471,22 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatus(ref common.ReferenceCallback)
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
 						},
 					},
+					"spanContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SpanContext contains tracing span context fields",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -1489,6 +1587,22 @@ func schema_pkg_apis_pipeline_v1_PipelineRunStatusFields(ref common.ReferenceCal
 						SchemaProps: spec.SchemaProps{
 							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
+						},
+					},
+					"spanContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SpanContext contains tracing span context fields",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
@@ -1987,7 +2101,7 @@ func schema_pkg_apis_pipeline_v1_PipelineWorkspaceDeclaration(ref common.Referen
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Description: "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding. Deprecated: use PipelineWorkspaceDeclaration type instead",
+				Description: "WorkspacePipelineDeclaration creates a named slot in a Pipeline that a PipelineRun is expected to populate with a workspace binding.\n\nDeprecated: use PipelineWorkspaceDeclaration type instead",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
@@ -2051,11 +2165,17 @@ func schema_pkg_apis_pipeline_v1_Provenance(ref common.ReferenceCallback) common
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"),
 						},
 					},
+					"featureFlags": {
+						SchemaProps: spec.SchemaProps{
+							Description: "FeatureFlags identifies the feature flags that were used during the task/pipeline run",
+							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"},
+			"github.com/tektoncd/pipeline/pkg/apis/config.FeatureFlags", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ConfigSource"},
 	}
 }
 
@@ -3465,7 +3585,7 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 					},
 					"status": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Used for cancelling a taskrun (and maybe more later on)",
+							Description: "Used for cancelling a TaskRun (and maybe more later on)",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3477,9 +3597,16 @@ func schema_pkg_apis_pipeline_v1_TaskRunSpec(ref common.ReferenceCallback) commo
 							Format:      "",
 						},
 					},
+					"retries": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Retries represents how many times this TaskRun should be retried in the event of task failure.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
 					"timeout": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Time after which the build times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+							Description: "Time after which one retry attempt times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
 							Ref:         ref("k8s.io/apimachinery/pkg/apis/meta/v1.Duration"),
 						},
 					},
@@ -3718,6 +3845,22 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatus(ref common.ReferenceCallback) com
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
 						},
 					},
+					"spanContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SpanContext contains tracing span context fields",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"podName"},
 			},
@@ -3840,6 +3983,22 @@ func schema_pkg_apis_pipeline_v1_TaskRunStatusFields(ref common.ReferenceCallbac
 						SchemaProps: spec.SchemaProps{
 							Description: "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Provenance"),
+						},
+					},
+					"spanContext": {
+						SchemaProps: spec.SchemaProps{
+							Description: "SpanContext contains tracing span context fields",
+							Type:        []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},
